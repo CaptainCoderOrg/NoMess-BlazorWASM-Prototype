@@ -28,6 +28,7 @@ Cleared: @_score | Next: @(string.Join("", _next))
     public const int Size = 9;
     public const int StartCells = 7;
     private List<string> _next = [];
+    private HashSet<int> _reachable = [];
     private int _score = 0;
     public readonly IReadOnlyList<string> Symbols = ["💣", "🙃", "🎅", "🏴"];
     private string[] _grid = [.. Enumerable.Repeat(string.Empty, Size * Size) ];
@@ -43,7 +44,11 @@ Cleared: @_score | Next: @(string.Join("", _next))
         {
             border = "border-color: yellow;";
         }
-        if (_lastPlaced.Contains(id))
+        if (_reachable.Contains(id))
+        {
+            background = "background-color: #bdbdbd;";
+        }
+        else if (_lastPlaced.Contains(id))
         {
             background = "background-color: pink;";
         }
@@ -127,6 +132,7 @@ Cleared: @_score | Next: @(string.Join("", _next))
         else if (_grid[pos] != string.Empty)
         {
             _selectedId = pos;
+            _reachable = FindReachable(pos);
         }
     }
 
@@ -141,6 +147,7 @@ Cleared: @_score | Next: @(string.Join("", _next))
         else if (first == second)
         {
             _selectedId = null;
+            _reachable.Clear();
         }
         else if (_grid[second] != string.Empty)
         {
@@ -150,9 +157,10 @@ Cleared: @_score | Next: @(string.Join("", _next))
 
     private void Move(int fromPos, int toPos)
     {
-        if (!IsValidMove(fromPos, toPos)) { return; }
+        if (!_reachable.Contains(toPos)) { return; }
         _lastCleared.Clear();
         _lastPlaced.Clear();
+        _reachable.Clear();
         _grid[toPos] = _grid[fromPos];
         _grid[fromPos] = string.Empty;
         _selectedId = null;
@@ -295,42 +303,28 @@ Cleared: @_score | Next: @(string.Join("", _next))
         return cleared;
     }
 
-    private bool IsValidMove(int fromPos, int toPos)
-    {
-        if (fromPos < 0 || fromPos >= _grid.Length || toPos < 0 || toPos >= _grid.Length)
-        {
-            return false;
-        }
-        if (_grid[fromPos] == string.Empty) { return false; }
-        if (_grid[toPos] != string.Empty) { return false; }
-        return HasPath(fromPos, toPos);
-    }
-
     private int ToRow(int pos) => pos / Size;
     private int ToCol(int pos) => pos % Size;
     private int ToPos(int row, int col) => col + row * Size;
 
-    private bool HasPath(int start, int end)
+    private HashSet<int> FindReachable(int pos)
     {
-        HashSet<int> visited = new();
+        if (pos < 0 || pos >= _grid.Length) { return []; }
+        HashSet<int> reachable = new();
         Queue<int> toVisit = new();
-        toVisit.Enqueue(start);
-        visited.Add(start);
+        toVisit.Enqueue(pos);
+        reachable.Add(pos);
 
         while (toVisit.TryDequeue(out int next))
         {
-            if (next == end)
-            {
-                return true;
-            }
             foreach (int neighbor in Neighbors(next))
             {
-                if (visited.Contains(neighbor) || _grid[neighbor] != string.Empty) { continue; }
-                visited.Add(neighbor);
+                if (reachable.Contains(neighbor) || _grid[neighbor] != string.Empty) { continue; }
+                reachable.Add(neighbor);
                 toVisit.Enqueue(neighbor);
             }
         }
-        return false;
+        return reachable;
     }
 
     private List<int> Neighbors(int pos)
