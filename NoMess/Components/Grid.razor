@@ -1,0 +1,95 @@
+@for(int row = 0; row < Size; row++)
+{
+    for(int col = 0; col < Size; col++)
+    {
+        int id = col + row * Size;
+        string symbol = @_grid[col + row * Size];
+        <button
+          style="@Style(id)"
+          @onclick="() => InteractWithTile(id)"
+        >
+        @if(symbol == String.Empty)
+        {
+            <text>&nbsp;</text>
+        }
+        else
+        {
+            <text>@symbol</text>
+        }
+        </button>
+    }
+    <br/>
+}
+
+@code
+{
+    public const int Size = 9;
+    public const int StartCells = 7;
+    public readonly List<string> Symbols = ["💣", "🙃", "🎅", "🏴"];
+    private string[] _grid = [.. Enumerable.Repeat(string.Empty, Size * Size) ];
+    private int? _selectedId = null;
+
+    public string Style(int id)
+    {
+        string border = "border-color: black;";
+        if (id == _selectedId)
+        {
+            border = "border-color: yellow;";
+        }
+        return $"width: 48px; height:48px; margin:2px 2px; {border}";
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        int count = 0;
+        while (count < StartCells)
+        {
+            int pos = Random.Shared.Next(0, _grid.Length);
+            if (_grid[pos] != string.Empty) { continue; }
+            int symbol = Random.Shared.Next(0, Symbols.Count);
+            _grid[pos] = Symbols[symbol];
+            count++;
+        }
+    }
+
+    private void PlaceTile(int pos, string tile) => _grid[pos] = tile;
+
+    private void InteractWithTile(int pos)
+    {
+        if (_selectedId.HasValue)
+        {
+            HandleSecondClick(pos);
+        }
+        else if (_grid[pos] != string.Empty)
+        {
+            _selectedId = pos;
+        }
+    }
+
+    private void HandleSecondClick(int second)
+    {
+        if (!_selectedId.HasValue) { return; }
+        int first = _selectedId.Value;
+        if (_grid[second] == string.Empty)
+        {
+            Move(first, second);
+        }
+        else if (first == second)
+        {
+            _selectedId = null;
+        }
+        else if (_grid[second] != string.Empty)
+        {
+            _selectedId = second;
+        }
+    }
+
+    private void Move(int fromPos, int toPos)
+    {
+        _grid[toPos] = _grid[fromPos];
+        _grid[fromPos] = string.Empty;
+        _selectedId = null;
+    }
+
+}
