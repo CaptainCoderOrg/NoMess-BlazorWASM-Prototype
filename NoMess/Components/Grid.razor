@@ -1,3 +1,5 @@
+Cleared: @_score | Next: @(string.Join("", _next))
+<br/>
 @for(int row = 0; row < Size; row++)
 {
     for(int col = 0; col < Size; col++)
@@ -25,31 +27,92 @@
 {
     public const int Size = 9;
     public const int StartCells = 7;
-    public readonly List<string> Symbols = ["💣", "🙃", "🎅", "🏴"];
+    private List<string> _next = [];
+    private int _score = 0;
+    public readonly IReadOnlyList<string> Symbols = ["💣", "🙃", "🎅", "🏴"];
     private string[] _grid = [.. Enumerable.Repeat(string.Empty, Size * Size) ];
     private int? _selectedId = null;
+    private List<int> _lastCleared = [];
+    private List<int> _lastPlaced = [];
 
     public string Style(int id)
     {
         string border = "border-color: black;";
+        string background = "";
         if (id == _selectedId)
         {
             border = "border-color: yellow;";
         }
-        return $"width: 48px; height:48px; margin:2px 2px; {border}";
+        if (_lastPlaced.Contains(id))
+        {
+            background = "background-color: pink;";
+        }
+        else if (_lastCleared.Contains(id))
+        {
+            background = "background-color: gray;";
+        }
+
+        return $"width: 48px; height:48px; margin:2px 2px; {border} {background}";
     }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        Init();
+    }
+
+    public void Init()
+    {
+        _score = 0;
+        _lastCleared.Clear();
+        _lastPlaced.Clear();
+        _grid = [.. Enumerable.Repeat(string.Empty, Size * Size) ];
         int count = 0;
-        while (count < StartCells)
-        {
-            int pos = Random.Shared.Next(0, _grid.Length);
-            if (_grid[pos] != string.Empty) { continue; }
+        int[] empties = EmptyPositions().ToArray();
+        Random.Shared.Shuffle(empties);
+        foreach (int pos in empties.Take(StartCells)) {
+            _lastPlaced.Add(pos);
             int symbol = Random.Shared.Next(0, Symbols.Count);
             _grid[pos] = Symbols[symbol];
             count++;
+        }
+        GenerateNext();
+    }
+
+    private bool PlaceNext()
+    {
+        int[] empties = EmptyPositions().ToArray();
+        Random.Shared.Shuffle(empties);
+        int placed = 0;
+        for (int ix = 0; ix < empties.Length && ix < _next.Count; ix++)
+        {
+            string ch = _next[ix];
+            PlaceTile(empties[ix], ch);
+            _lastPlaced.Add(empties[ix]);
+            placed++;
+        }
+        return placed == _next.Count;
+    }
+
+    private List<int> EmptyPositions()
+    {
+        List<int> empties = new ();
+        for (int pos = 0; pos < _grid.Length; pos++)
+        {
+            if (_grid[pos] == string.Empty)
+            {
+                empties.Add(pos);
+            }
+        }
+        return empties;
+    }
+
+    private void GenerateNext()
+    {
+        _next.Clear();
+        for (int count = 0; count < 3; count++)
+        {
+            _next.Add(Symbols[Random.Shared.Next(0, Symbols.Count)]);
         }
     }
 
@@ -87,9 +150,210 @@
 
     private void Move(int fromPos, int toPos)
     {
+        if (!IsValidMove(fromPos, toPos)) { return; }
+        _lastCleared.Clear();
+        _lastPlaced.Clear();
         _grid[toPos] = _grid[fromPos];
         _grid[fromPos] = string.Empty;
         _selectedId = null;
+        _lastCleared.AddRange(FindAndClear());
+        if (_lastCleared.Count() == 0)
+        {
+            PlaceNext();
+            GenerateNext();
+            _lastCleared.AddRange(FindAndClear());
+        }
+        _score += _lastCleared.Count;
+    }
+
+    private List<int> FindAndClear()
+    {
+        List<int> cleared = FindCleared();
+        foreach (int pos in cleared)
+        {
+            PlaceTile(pos, string.Empty);
+        }
+        return cleared;
+    }
+
+    private List<int> FindCleared()
+    {
+        List<int> cleared = [];
+        cleared.AddRange(FindClearedRows());
+        cleared.AddRange(FindClearedColumns());
+        cleared.AddRange(FindClearedDiagonals());
+        return cleared;
+    }
+
+    private List<int> FindClearedRows()
+    {
+        List<int> cleared = [];
+        for (int row = 0; row < Size; row++)
+        {
+            cleared.AddRange(FindClearedInRow(row));
+        }
+        return cleared;
+    }
+
+    private List<int> FindClearedColumns()
+    {
+        List<int> cleared = [];
+        for (int col = 0; col < Size; col++)
+        {
+            cleared.AddRange(FindClearedInCol(col));
+        }
+        return cleared;
+    }
+
+    private List<int> FindClearedInRow(int row)
+    {
+        List<int> cleared = [];
+        int endOfRow = row * Size + Size;
+        for (int pos = row * Size; pos < endOfRow; pos++)
+        {
+            string symbol = _grid[pos];
+            // Skip blanks
+            if (symbol == string.Empty) { continue; }
+
+            // Find all matching symbols
+            cleared.Add(pos);
+            while (pos < endOfRow - 1 && _grid[pos + 1] == symbol)
+            {
+                pos++;
+                cleared.Add(pos);
+            }
+
+            // If we found 5 or more, return those found.
+            if (cleared.Count >= 5) { return cleared; }
+
+            // Otherwise we clear what we found and go to the next iteration
+            cleared.Clear();
+        }
+        return cleared;
+    }
+
+    private List<int> FindClearedInCol(int col)
+    {
+        List<int> cleared = [];
+        for (int pos = col; pos < _grid.Length; pos += Size)
+        {
+            string symbol = _grid[pos];
+            // Skip blanks
+            if (symbol == string.Empty) { continue; }
+
+            // Find all matching symbols
+            cleared.Add(pos);
+            while (pos < _grid.Length - Size && _grid[pos + Size] == symbol)
+            {
+                pos += Size;
+                cleared.Add(pos);
+            }
+
+            // If we found 5 or more, return those found.
+            if (cleared.Count >= 5) { return cleared; }
+
+            // Otherwise we clear what we found and go to the next iteration
+            cleared.Clear();
+        }
+        return cleared;
+    }
+
+    private List<int> FindClearedDiagonals()
+    {
+        List<int> cleared = [];
+        for (int col = 0; col < Size; col++)
+        {
+            cleared.AddRange(FindClearedInDiag(col, 1));
+            cleared.AddRange(FindClearedInDiag(col + Size-1, -1));
+        }
+        return cleared;
+    }
+
+    private List<int> FindClearedInDiag(int startCol, int dir)
+    {
+        List<int> cleared = [];
+        for (int pos = startCol; pos < _grid.Length; pos += Size + dir)
+        {
+            string symbol = _grid[pos];
+            // Skip blanks
+            if (symbol == string.Empty) { continue; }
+
+            // Find all matching symbols
+            cleared.Add(pos);
+            while (pos < _grid.Length - Size - dir && _grid[pos + Size + dir] == symbol)
+            {
+                pos += Size + dir;
+                cleared.Add(pos);
+            }
+
+            // If we found 5 or more, return those found.
+            if (cleared.Count >= 5) { return cleared; }
+
+            // Otherwise we clear what we found and go to the next iteration
+            cleared.Clear();
+        }
+        return cleared;
+    }
+
+    private bool IsValidMove(int fromPos, int toPos)
+    {
+        if (fromPos < 0 || fromPos >= _grid.Length || toPos < 0 || toPos >= _grid.Length)
+        {
+            return false;
+        }
+        if (_grid[fromPos] == string.Empty) { return false; }
+        if (_grid[toPos] != string.Empty) { return false; }
+        return HasPath(fromPos, toPos);
+    }
+
+    private int ToRow(int pos) => pos / Size;
+    private int ToCol(int pos) => pos % Size;
+    private int ToPos(int row, int col) => col + row * Size;
+
+    private bool HasPath(int start, int end)
+    {
+        HashSet<int> visited = new();
+        Queue<int> toVisit = new();
+        toVisit.Enqueue(start);
+        visited.Add(start);
+
+        while (toVisit.TryDequeue(out int next))
+        {
+            if (next == end)
+            {
+                return true;
+            }
+            foreach (int neighbor in Neighbors(next))
+            {
+                if (visited.Contains(neighbor) || _grid[neighbor] != string.Empty) { continue; }
+                visited.Add(neighbor);
+                toVisit.Enqueue(neighbor);
+            }
+        }
+        return false;
+    }
+
+    private List<int> Neighbors(int pos)
+    {
+        int row = ToRow(pos);
+        List<int> neighbors = [];
+        if (ToRow(pos + 1) == row)
+        {
+            neighbors.Add(pos + 1);
+        }
+        if (pos > 0 && ToRow(pos - 1) == row)
+        {
+            neighbors.Add(pos - 1);
+        }
+        if (pos + Size < _grid.Length)
+        {
+            neighbors.Add(pos + Size);
+        }
+        if (pos - Size >= 0)
+        {
+            neighbors.Add(pos - Size);
+        }
+        return neighbors;
     }
 
 }
