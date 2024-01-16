@@ -1,8 +1,9 @@
 <div style="width: fit-content; margin:auto;">
 <h1>No Mess</h1>
 <div style="width: 100%; display:flex;">
-    <div style="text-align:left; display:inline-block;">Next: @(string.Join("", _next))</div> 
-    <div style="display: inline-block; flex-grow:1; text-align:right;">Cleared: @_score <br/></div>
+    <div style="text-align:left; display:inline-block; flex:1 1;">Next: @(string.Join("", _next))</div> 
+    <div style="text-align:center; display:inline-block; flex:1 1;">Level: @Level</div> 
+    <div style="display: inline-block; flex:1 1; text-align:right;">Cleared: @_score <br/></div>
 </div>
 @for(int row = 0; row < Size; row++)
 {
@@ -34,10 +35,13 @@
     public const int ClearLength = 5;
     public const int Size = 9;
     public const int StartCells = 7;
+    public const int LevelFactor = 100;
+    public int Level => 1 + (_score / LevelFactor);
     private List<string> _next = [];
     private HashSet<int> _reachable = [];
     private int _score = 0;
-    public readonly IReadOnlyList<string> Symbols = ["💣", "🙃", "🎅", "🏴"];
+    public int PossibleSymbols => Math.Min(4 + (Level - 1), Symbols.Count);
+    public readonly IReadOnlyList<string> Symbols = ["💣", "🙃", "🎅", "🏴", "❤", "⭐", "🍕", "🍪"];
     private string[] _grid = [.. Enumerable.Repeat(string.Empty, Size * Size) ];
     private int? _selectedId = null;
     private List<int> _lastCleared = [];
@@ -75,7 +79,7 @@
 
     public void Init()
     {
-        _score = 0;
+        _score = 99;
         _lastCleared.Clear();
         _lastPlaced.Clear();
         _reachable.Clear();
@@ -86,7 +90,7 @@
         Random.Shared.Shuffle(empties);
         foreach (int pos in empties.Take(StartCells)) {
             _lastPlaced.Add(pos);
-            int symbol = Random.Shared.Next(0, Symbols.Count);
+            int symbol = Random.Shared.Next(0, PossibleSymbols);
             _grid[pos] = Symbols[symbol];
             count++;
         }
@@ -126,7 +130,7 @@
         _next.Clear();
         for (int count = 0; count < 3; count++)
         {
-            _next.Add(Symbols[Random.Shared.Next(0, Symbols.Count)]);
+            _next.Add(Symbols[Random.Shared.Next(0, PossibleSymbols)]);
         }
     }
 
