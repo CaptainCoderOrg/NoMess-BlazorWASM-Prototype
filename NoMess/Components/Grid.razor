@@ -1,5 +1,9 @@
-Cleared: @_score | Next: @(string.Join("", _next))
-<br/>
+<div style="width: fit-content;">
+<h1>No Mess</h1>
+<div style="width: 100%; display:flex;">
+    <div style="text-align:left; display:inline-block;">Next: @(string.Join("", _next))</div> 
+    <div style="display: inline-block; flex-grow:1; text-align:right;">Cleared: @_score <br/></div>
+</div>
 @for(int row = 0; row < Size; row++)
 {
     for(int col = 0; col < Size; col++)
@@ -23,8 +27,11 @@ Cleared: @_score | Next: @(string.Join("", _next))
     <br/>
 }
 
+<p style="margin-top:20px"><button @onclick="Init">Restart</button></p>
+</div>
 @code
 {
+    public const int ClearLength = 3;
     public const int Size = 9;
     public const int StartCells = 7;
     private List<string> _next = [];
@@ -71,6 +78,8 @@ Cleared: @_score | Next: @(string.Join("", _next))
         _score = 0;
         _lastCleared.Clear();
         _lastPlaced.Clear();
+        _reachable.Clear();
+        _selectedId = null;
         _grid = [.. Enumerable.Repeat(string.Empty, Size * Size) ];
         int count = 0;
         int[] empties = EmptyPositions().ToArray();
@@ -132,7 +141,10 @@ Cleared: @_score | Next: @(string.Join("", _next))
         else if (_grid[pos] != string.Empty)
         {
             _selectedId = pos;
-            _reachable = FindReachable(pos);
+        }
+        if (_selectedId.HasValue)
+        {
+            _reachable = FindReachable(_selectedId.Value);
         }
     }
 
@@ -198,7 +210,7 @@ Cleared: @_score | Next: @(string.Join("", _next))
         List<int> cleared = [];
         for (int row = 0; row < Size; row++)
         {
-            cleared.AddRange(FindClearedInRow(row));
+            cleared.AddRange(FindCleared(0, row, 1, 0));
         }
         return cleared;
     }
@@ -208,60 +220,7 @@ Cleared: @_score | Next: @(string.Join("", _next))
         List<int> cleared = [];
         for (int col = 0; col < Size; col++)
         {
-            cleared.AddRange(FindClearedInCol(col));
-        }
-        return cleared;
-    }
-
-    private List<int> FindClearedInRow(int row)
-    {
-        List<int> cleared = [];
-        int endOfRow = row * Size + Size;
-        for (int pos = row * Size; pos < endOfRow; pos++)
-        {
-            string symbol = _grid[pos];
-            // Skip blanks
-            if (symbol == string.Empty) { continue; }
-
-            // Find all matching symbols
-            cleared.Add(pos);
-            while (pos < endOfRow - 1 && _grid[pos + 1] == symbol)
-            {
-                pos++;
-                cleared.Add(pos);
-            }
-
-            // If we found 5 or more, return those found.
-            if (cleared.Count >= 5) { return cleared; }
-
-            // Otherwise we clear what we found and go to the next iteration
-            cleared.Clear();
-        }
-        return cleared;
-    }
-
-    private List<int> FindClearedInCol(int col)
-    {
-        List<int> cleared = [];
-        for (int pos = col; pos < _grid.Length; pos += Size)
-        {
-            string symbol = _grid[pos];
-            // Skip blanks
-            if (symbol == string.Empty) { continue; }
-
-            // Find all matching symbols
-            cleared.Add(pos);
-            while (pos < _grid.Length - Size && _grid[pos + Size] == symbol)
-            {
-                pos += Size;
-                cleared.Add(pos);
-            }
-
-            // If we found 5 or more, return those found.
-            if (cleared.Count >= 5) { return cleared; }
-
-            // Otherwise we clear what we found and go to the next iteration
-            cleared.Clear();
+            cleared.AddRange(FindCleared(col, 0, 0, 1));
         }
         return cleared;
     }
@@ -269,33 +228,39 @@ Cleared: @_score | Next: @(string.Join("", _next))
     private List<int> FindClearedDiagonals()
     {
         List<int> cleared = [];
-        for (int col = 0; col < Size; col++)
+        for (int edge = 0; edge < Size; edge++)
         {
-            cleared.AddRange(FindClearedInDiag(col, 1));
-            cleared.AddRange(FindClearedInDiag(col + Size-1, -1));
+            cleared.AddRange(FindCleared(edge, 0, 1, 1));
+            cleared.AddRange(FindCleared(edge, 0, -1, 1));
+            cleared.AddRange(FindCleared(0, edge, 1, 1));
+            cleared.AddRange(FindCleared(Size-1, edge, -1, 1));
         }
         return cleared;
     }
 
-    private List<int> FindClearedInDiag(int startCol, int dir)
+    private bool InBounds(int row, int col) => row >= 0 && row < Size && col >= 0 && col < Size;
+
+    private List<int> FindCleared(int startCol, int startRow, int cDir, int rDir)
     {
         List<int> cleared = [];
-        for (int pos = startCol; pos < _grid.Length; pos += Size + dir)
+        for (int row = startRow, col = startCol; InBounds(row, col); row += rDir, col += cDir)
         {
-            string symbol = _grid[pos];
+            int pos = ToPos(row, col);
+            string symbol = _grid[ToPos(row, col)];
             // Skip blanks
             if (symbol == string.Empty) { continue; }
 
             // Find all matching symbols
             cleared.Add(pos);
-            while (pos < _grid.Length - Size - dir && _grid[pos + Size + dir] == symbol)
+            while (InBounds(row + rDir, col + cDir) && _grid[ToPos(row + rDir, col + cDir)] == symbol)
             {
-                pos += Size + dir;
-                cleared.Add(pos);
+                row += rDir;
+                col += cDir;
+                cleared.Add(ToPos(row, col));
             }
 
             // If we found 5 or more, return those found.
-            if (cleared.Count >= 5) { return cleared; }
+            if (cleared.Count >= ClearLength) { return cleared; }
 
             // Otherwise we clear what we found and go to the next iteration
             cleared.Clear();
