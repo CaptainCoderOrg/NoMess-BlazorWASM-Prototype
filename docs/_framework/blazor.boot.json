@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "NoMess",
   "resources": {
-    "hash": "sha256-BJNu2khL53xaEMajBfShJujEn8g+F1Zp50aafRc0Tz0=",
+    "hash": "sha256-rHW7bi6Unj8M3sDLvAKKZU0VGmwuiJ8p8SnX1uOGHzI=",
     "jsModuleNative": {
       "dotnet.native.8.0.0.bhei1hk6t5.js": "sha256-LjLDIz9+J7uuiwMlQ4HbNx2BnSpphOtO2MwkoI28vdI="
     },
@@ -31,7 +31,7 @@
       "Microsoft.Extensions.Primitives.wasm": "sha256-6187ynEahDlSLMBvD4vAmiLpZ3clRb5xu6rM7O8AxNo=",
       "Microsoft.JSInterop.wasm": "sha256-lXwhdv0Is9FMH/j0+WH3zoNWAGLbVaONtGucJ/4URQ0=",
       "Microsoft.JSInterop.WebAssembly.wasm": "sha256-CQVLCKiSxLN5ghyJZG3mhnMGRROdqrbNUjtAXB0nWb8=",
-      "NoMess.wasm": "sha256-JwRtlkpwdOCSbX8gdbzknKqLnQGSWkEJxIL9i0+azBI=",
+      "NoMess.wasm": "sha256-mIyk/lelLRCWc5FhqzvL1lPFhf1acS1Sd3ijkCUXbS0=",
       "System.Collections.Concurrent.wasm": "sha256-EEjsVG2yehHBgesQ72iS4hW3jUAlbG3YFhJbSZBThvQ=",
       "System.Collections.wasm": "sha256-rrylbyrFyu82PtAeOINndROR/gU8sQSF+7p69E5ILJE=",
       "System.ComponentModel.wasm": "sha256-Kg+Te+dUBA6OiPS3uVj+Poyamhf9bMlcL96uc+bTYWc=",
